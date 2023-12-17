@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- 문자 인코딩을 UTF-8로 설정 -->
+    <meta charset="utf-8">
+    <!-- 페이지 타이틀 설정 -->
+    <title>My first three.js app</title>
+    <!-- 페이지 스타일 설정 -->
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Three.js를 모듈로 가져옴 -->
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+        // 씬 생성
+        const scene = new THREE.Scene();
+
+        // 카메라 생성 (원근 투영 카메라)
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        // WebGLRenderer를 생성
+        const renderer = new THREE.WebGLRenderer();
+
+        // 렌더러의 크기를 창의 크기로 설정
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // 렌더러의 canvas 엘리먼트를 body에 추가
+        document.body.appendChild(renderer.domElement);
+
+        // 배경색 설정
+        renderer.setClearColor(new THREE.Color(1, 1, 0));
+
+
+        // SphereGeometry를 사용하여 구체 생성
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+
+        // 정점 쉐이더와 프래그먼트 쉐이더 코드를 가져와 ShaderMaterial 생성
+        var vShader = document.getElementById('vertexShader').innerHTML;
+        var fShader = document.getElementById('fragmentShader').innerHTML;
+
+        // ShaderMaterial 클래스를 사용하여 쉐이더를 적용한 재질 생성
+        const material = new THREE.ShaderMaterial({
+            vertexShader: vShader, // 정점 쉐이더 코드
+            fragmentShader: fShader // 프래그먼트 쉐이더 코드
+        });
+
+        // 구체와 재질을 이용한 Mesh 생성
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        // 카메라 초기 위치 설정
+        camera.position.z = 5;
+
+        // 애니메이션 함수
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 구체 회전
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            // 렌더링
+            renderer.render(scene, camera);
+        }
+
+        // 애니메이션 시작
+        animate();
+    </script>
+
+    <!-- 정점 쉐이더 코드 -->
+    <script id="vertexShader" type="x-shader/x-vertex">
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+            // 모델뷰 행렬과 정점 위치 계산
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            // 투영 행렬과 모델뷰 행렬을 곱해 최종 위치 계산
+            gl_Position = projectionMatrix * mvPosition;
+            // 정규화된 법선과 시야 위치 계산
+            vNormal = normalMatrix * normal;
+            vViewPosition = -mvPosition.xyz;
+        }
+    </script>
+
+    <!-- 프래그먼트 쉐이더 코드 -->
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+            // 법선과 시야 벡터를 정규화
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0)); // 조명 방향 벡터
+
+            // 주변광 계산
+            float ambientStrength = 0.2;
+            vec3 ambient = ambientStrength * vec3(1.0, 1.0, 1.0);
+
+            // 난반사광 계산
+            float diff = max(dot(normal, lightDir), 0.0);
+            vec3 diffuse = diff * vec3(1.0, 0.0, 0.0); // 빨간색으로 설정
+
+            // 반사광 계산
+            vec3 reflectDir = reflect(-lightDir, normal);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+            vec3 specular = vec3(0.5) * spec;
+
+            // 최종 색상 계산 (주변광 + 난반사광 + 반사광)
+            vec3 result = (ambient + diffuse + specular);
+
+            // 프래그먼트 색상 설정
+            gl_FragColor = vec4(result, 1.0);
+        }
+    </script>
+</body>
+
+</html>
